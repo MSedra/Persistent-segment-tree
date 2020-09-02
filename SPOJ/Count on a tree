@@ -1,0 +1,183 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+class Node
+{
+public:
+  Node *left;
+  Node *right;
+  int val;
+};
+
+vector<vector<int>> Graph, up;
+vector<bool> visited;
+vector<Node *> pointers;
+vector<int> ptrind, par, height, weight;
+map<int, int> ind;
+int n;
+
+class perSegTree
+{
+public:
+  Node *root;
+  perSegTree()
+  {
+    root = new Node();
+  }
+
+  void construct(int i, int j, Node *curr)
+  {
+    if (i == j)
+    {
+      curr->val = 0;
+      return;
+    }
+    int mid = i + (j - i) / 2;
+    Node *child1 = new Node();
+    Node *child2 = new Node();
+    construct(i, mid, child1);
+    construct(mid + 1, j, child2);
+    curr->left = child1;
+    curr->right = child2;
+    curr->val = child1->val + child2->val;
+  }
+
+  Node *update(int i, int j, int pos, Node *curr)
+  {
+    if (i == j && i == pos)
+    {
+      Node *newNode = new Node();
+      newNode->val = curr->val + 1;
+      return newNode;
+    }
+    if (pos < i || pos > j)
+      return curr;
+    Node *newNode = new Node();
+    int mid = i + (j - i) / 2;
+    newNode->left = update(i, mid, pos, curr->left);
+    newNode->right = update(mid + 1, j, pos, curr->right);
+    newNode->val = newNode->left->val + newNode->right->val;
+    return newNode;
+  }
+
+  int findKth(int i, int j, int k, Node *l, Node *r, Node *lcaptr, int lca)
+  {
+    if (i == j)
+      return i;
+    int mid = i + (j - i) / 2;
+    int cntl = l->left->val + r->left->val - 2 * lcaptr->left->val;
+    int indiso = ind[weight[lca]] - 1;
+    if (indiso >= i && indiso <= mid)
+      ++cntl;
+    if (cntl >= k)
+      return findKth(i, mid, k, l->left, r->left, lcaptr->left, lca);
+    else
+      return findKth(mid + 1, j, k - cntl, l->right, r->right, lcaptr->right, lca);
+  }
+};
+
+void dfs1(int v, perSegTree *root, Node *ptr)
+{
+  visited[v] = true;
+  Node *newPtr = root->update(0, n - 1, ind[weight[v]] - 1, ptr);
+  pointers.push_back(newPtr);
+  ptrind[v] = pointers.size() - 1;
+  for (auto vv : Graph[v])
+    if (!visited[vv])
+      dfs1(vv, root, newPtr);
+}
+
+void dfs2(int v, int depth, int parent)
+{
+  visited[v] = true;
+  par[v] = parent;
+  height[v] = depth;
+  for (auto vv : Graph[v])
+    if (!visited[vv])
+      dfs2(vv, depth + 1, v);
+}
+
+void preUp(int n, int l)
+{
+  for (int i = 1; i <= n; ++i)
+    up[i][0] = par[i]; // ancestor up at distance 1 is the parent
+  for (int j = 1; j <= l; ++j)
+    for (int i = 1; i <= n; ++i)
+      if (up[i][j - 1])                     // if half the jump is valid
+        up[i][j] = up[up[i][j - 1]][j - 1]; // this jump = half the jump from the node that is half the jump from this node
+}
+
+int LCA(int x, int y, int l)
+{
+  // height of x is greater than or equal the height of y
+  if (height[y] > height[x]) // if the opposite, swap them to make them as wanted
+    swap(x, y);
+  for (int j = l; j >= 0; --j) // jumping from x to get the node at the same height as y
+    if (up[x][j] && height[up[x][j]] >= height[y])
+      x = up[x][j];
+  if (x == y) // if one of them is the LCA , return it
+    return x;
+  for (int j = l; j >= 0; --j) // jumping all valid jumps to reach exactly the first node below the LCA in each branch
+    if (up[x][j] != up[y][j])
+    {
+      x = up[x][j];
+      y = up[y][j];
+    }
+  return up[x][0]; // the ancestor up at distance 1 from x (which is now the first node in the first branch) or y (which is now the first node in the second branch) is the LCA
+}
+
+auto main() -> int
+{
+  ios_base::sync_with_stdio(false);
+  cin.tie(0);
+  cout.tie(0);
+
+  int m, val, cnt = 1, k, u, v, q, mul = 2, l = 1;
+  vector<int> svec, orgv;
+  cin >> n >> q;
+  m = n - 1;
+  weight.push_back(0);
+  for (int i = 0; i < n; ++i)
+  {
+    cin >> val;
+    weight.push_back(val);
+  }
+  while (mul * 2 < n)
+    mul *= 2, ++l;
+  ++l;
+  Graph.resize(n + 5);
+  visited.resize(n + 5);
+  ptrind.resize(n + 5);
+  up.resize(n + 1, vector<int>(l + 1));
+  par.resize(n + 1), height.resize(n + 1);
+
+  while (m--)
+  {
+    cin >> u >> v;
+    Graph[u].push_back(v);
+    Graph[v].push_back(u);
+  }
+  svec = weight;
+  sort(svec.begin(), svec.end());
+  for (int i = 1; i <= n; ++i)
+  {
+    if (!ind[svec[i]])
+      ind[svec[i]] = cnt++;
+    if (!i || svec[i] != svec[i - 1])
+      orgv.push_back(svec[i]);
+  }
+  perSegTree *tree = new perSegTree();
+  tree->construct(0, n - 1, tree->root);
+  pointers.push_back(tree->root);
+  dfs1(1, tree, tree->root);
+  visited.clear();
+  visited.resize(n + 5);
+  dfs2(1, 0, 0);
+  preUp(n, l);
+  while (q--)
+  {
+    cin >> u >> v >> k;
+    int lca = LCA(u, v, l);
+    cout << orgv[tree->findKth(0, n - 1, k, pointers[ptrind[u]], pointers[ptrind[v]], pointers[ptrind[lca]], lca)] << '\n';
+  }
+}
