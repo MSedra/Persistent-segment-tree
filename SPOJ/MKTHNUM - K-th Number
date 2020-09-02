@@ -1,0 +1,104 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+class Node
+{
+public:
+  Node *left;
+  Node *right;
+  int val;
+};
+
+class perSegTree
+{
+public:
+  Node *root;
+  perSegTree()
+  {
+    root = new Node();
+  }
+
+  void construct(int i, int j, Node *curr)
+  {
+    if (i == j)
+    {
+      curr->val = 0;
+      return;
+    }
+    int mid = i + (j - i) / 2;
+    Node *child1 = new Node();
+    Node *child2 = new Node();
+    construct(i, mid, child1);
+    construct(mid + 1, j, child2);
+    curr->left = child1;
+    curr->right = child2;
+    curr->val = child1->val + child2->val;
+  }
+
+  Node *update(int i, int j, int pos, Node *curr)
+  {
+    if (i == j && i == pos)
+    {
+      Node *newNode = new Node();
+      newNode->val = curr->val + 1;
+      return newNode;
+    }
+    if (pos < i || pos > j)
+      return curr;
+    Node *newNode = new Node();
+    int mid = i + (j - i) / 2;
+    newNode->left = update(i, mid, pos, curr->left);
+    newNode->right = update(mid + 1, j, pos, curr->right);
+    newNode->val = newNode->left->val + newNode->right->val;
+    return newNode;
+  }
+
+  int findKth(int i, int j, int k, Node *l, Node *r)
+  {
+    if (i == j)
+      return i;
+    int mid = i + (j - i) / 2;
+    int cntl = r->left->val - l->left->val;
+    if (cntl >= k)
+      return findKth(i, mid, k, l->left, r->left);
+    else
+      return findKth(mid + 1, j, k - cntl, l->right, r->right);
+  }
+};
+
+auto main() -> int
+{
+  ios_base::sync_with_stdio(false);
+  cin.tie(0);
+  cout.tie(0);
+
+  int n, m, val, cnt = 1, l, r, k;
+  vector<int> vec, svec, orgv;
+  map<int, int> ind;
+  cin >> n >> m;
+  for (int i = 0; i < n; ++i)
+  {
+    cin >> val;
+    vec.push_back(val);
+  }
+  svec = vec;
+  sort(svec.begin(), svec.end());
+  for (int i = 0; i < n; ++i)
+  {
+    if (!ind[svec[i]])
+      ind[svec[i]] = cnt++;
+    if (!i || svec[i] != svec[i - 1])
+      orgv.push_back(svec[i]);
+  }
+  perSegTree *tree = new perSegTree();
+  tree->construct(0, n - 1, tree->root);
+  vector<Node *> pointers;
+  pointers.push_back(tree->root);
+  for (int i = 0; i < n; ++i)
+    pointers.push_back(tree->update(0, n - 1, ind[vec[i]] - 1, pointers[i]));
+  while (m--)
+  {
+    cin >> l >> r >> k;
+    cout << orgv[tree->findKth(0, n - 1, k, pointers[l - 1], pointers[r])] << '\n';
+  }
+}
