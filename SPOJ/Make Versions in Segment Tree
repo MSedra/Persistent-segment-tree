@@ -1,0 +1,105 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+#define fn(x) return cout << x << endl, 0
+#define prs(x) cout << x << " "
+#define prl(x) cout << x << endl
+#define pr(x) cout << x
+#define pi 3.14159265358979323846264338327950
+
+typedef long long ll;
+ll MOD = (ll)1000000007;
+
+class Node
+{
+public:
+  Node *left;
+  Node *right;
+  ll val;
+};
+class perSegTree
+{
+public:
+  Node *root;
+  perSegTree()
+  {
+    root = new Node();
+  }
+  void construct(int i, int j, vector<int> &vec, Node *curr)
+  {
+    if (i == j)
+    {
+      curr->val = vec[i];
+      return;
+    }
+    int mid = i + (j - i) / 2;
+    Node *child1 = new Node();
+    Node *child2 = new Node();
+    construct(i, mid, vec, child1);
+    construct(mid + 1, j, vec, child2);
+    curr->left = child1;
+    curr->right = child2;
+    curr->val = child1->val + child2->val;
+  }
+
+  Node *update(int i, int j, int pos, int v, Node *curr)
+  {
+    if (i == j && i == pos)
+    {
+      Node *newNode = new Node();
+      newNode->val = curr->val + v;
+      return newNode;
+    }
+    if (pos < i || pos > j)
+      return curr;
+    Node *newNode = new Node();
+    int mid = i + (j - i) / 2;
+    newNode->left = update(i, mid, pos, v, curr->left);
+    newNode->right = update(mid + 1, j, pos, v, curr->right);
+    newNode->val = newNode->left->val + newNode->right->val;
+    return newNode;
+  }
+
+  ll query(int i, int j, int l, int r, Node *curr)
+  {
+    if (j < l || r < i)
+      return 0;
+    if (i >= l && j <= r)
+      return curr->val;
+    int mid = i + (j - i) / 2;
+    return query(i, mid, l, r, curr->left) + query(mid + 1, j, l, r, curr->right);
+  }
+};
+
+int main()
+{
+  ios_base::sync_with_stdio(false);
+  cin.tie(0);
+  cout.tie(0);
+
+  int n, q, a, b, c, d;
+  cin >> n;
+  vector<int> vec;
+  while (n--)
+  {
+    int val;
+    cin >> val;
+    vec.push_back(val);
+  }
+  perSegTree *pst = new perSegTree();
+  pst->construct(0, vec.size() - 1, vec, pst->root);
+  vector<Node *> trees;
+  trees.push_back(pst->root);
+  cin >> q;
+  while (q--)
+  {
+    cin >> a >> b >> c >> d;
+    if (a == 1)
+    {
+      Node *newTree = pst->update(0, vec.size() - 1, c - 1, d, trees[b]);
+      trees.push_back(newTree);
+    }
+    else
+      cout << pst->query(0, vec.size() - 1, c - 1, d - 1, trees[b]) << '\n';
+  }
+}
